@@ -4,25 +4,31 @@ import MetricCard from "@/components/MetricCard";
 import StatusIndicator from "@/components/StatusIndicator";
 import WaterQualityChart from "@/components/WaterQualityChart";
 import AlertsPanel from "@/components/AlertsPanel";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
+  const { toast } = useToast();
+  const [deviceId] = useState('device_001');
+  const [isConnected, setIsConnected] = useState(false);
+  
   const [metrics, setMetrics] = useState({
-    tds: 45,
-    ph: 7.2,
-    temperature: 24,
-    flowRate: 2.5,
-    tankLevel: 85,
-    filterLife: 72,
+    tds: 0,
+    ph: 0,
+    temperature: 0,
+    flowRate: 0,
+    tankLevel: 0,
+    filterLife: 0,
   });
 
   const [chartData, setChartData] = useState([
-    { time: "00:00", tds: 42, ph: 7.1 },
-    { time: "04:00", tds: 44, ph: 7.2 },
-    { time: "08:00", tds: 43, ph: 7.1 },
-    { time: "12:00", tds: 45, ph: 7.2 },
-    { time: "16:00", tds: 46, ph: 7.3 },
-    { time: "20:00", tds: 45, ph: 7.2 },
-    { time: "Now", tds: 45, ph: 7.2 },
+    { time: "00:00", tds: 0, ph: 0 },
+    { time: "04:00", tds: 0, ph: 0 },
+    { time: "08:00", tds: 0, ph: 0 },
+    { time: "12:00", tds: 0, ph: 0 },
+    { time: "16:00", tds: 0, ph: 0 },
+    { time: "20:00", tds: 0, ph: 0 },
+    { time: "Now", tds: 0, ph: 0 },
   ]);
 
   const alerts = [
@@ -46,21 +52,109 @@ const Index = () => {
     },
   ];
 
-  // Simulate real-time data updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics((prev) => ({
-        tds: Math.max(40, Math.min(50, prev.tds + (Math.random() - 0.5) * 2)),
-        ph: Math.max(6.8, Math.min(7.5, prev.ph + (Math.random() - 0.5) * 0.1)),
-        temperature: Math.max(22, Math.min(26, prev.temperature + (Math.random() - 0.5) * 0.5)),
-        flowRate: Math.max(2, Math.min(3, prev.flowRate + (Math.random() - 0.5) * 0.2)),
-        tankLevel: Math.max(70, Math.min(95, prev.tankLevel + (Math.random() - 0.5) * 2)),
-        filterLife: prev.filterLife,
-      }));
-    }, 3000);
+  // Fetch latest sensor reading
+  const fetchLatestReading = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sensor_readings')
+        .select('*')
+        .eq('device_id', deviceId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    return () => clearInterval(interval);
-  }, []);
+      if (error) {
+        console.error('Error fetching sensor data:', error);
+        return;
+      }
+
+      if (data) {
+        setMetrics({
+          tds: data.tds || 0,
+          ph: data.ph || 0,
+          temperature: data.temperature || 0,
+          flowRate: data.flow_rate || 0,
+          tankLevel: data.tank_level || 0,
+          filterLife: data.filter_life || 0,
+        });
+        setIsConnected(true);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  // Fetch chart data (last 7 readings)
+  const fetchChartData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sensor_readings')
+        .select('tds, ph, created_at')
+        .eq('device_id', deviceId)
+        .order('created_at', { ascending: false })
+        .limit(7);
+
+      if (error) {
+        console.error('Error fetching chart data:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const formattedData = data.reverse().map((reading, index) => ({
+          time: index === data.length - 1 ? 'Now' : new Date(reading.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          tds: reading.tds || 0,
+          ph: reading.ph || 0,
+        }));
+        setChartData(formattedData);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  // Set up realtime subscription
+  useEffect(() => {
+    fetchLatestReading();
+    fetchChartData();
+
+    const channel = supabase
+      .channel('sensor-readings')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sensor_readings',
+          filter: `device_id=eq.${deviceId}`,
+        },
+        (payload) => {
+          console.log('New sensor reading:', payload);
+          const newData = payload.new;
+          setMetrics({
+            tds: newData.tds || 0,
+            ph: newData.ph || 0,
+            temperature: newData.temperature || 0,
+            flowRate: newData.flow_rate || 0,
+            tankLevel: newData.tank_level || 0,
+            filterLife: newData.filter_life || 0,
+          });
+          setIsConnected(true);
+          
+          // Update chart data
+          fetchChartData();
+          
+          toast({
+            title: "New Data Received",
+            description: "Sensor readings updated in real-time",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [deviceId, toast]);
 
   const getStatus = (value: number, min: number, max: number) => {
     if (value >= min && value <= max) return "good";
@@ -87,11 +181,13 @@ const Index = () => {
         {/* Live Status Banner */}
         <div className="glass-card p-4 flex items-center justify-between animate-pulse-glow">
           <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-success animate-pulse" />
-            <span className="font-medium">System Online • Real-time Monitoring Active</span>
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-success' : 'bg-warning'} animate-pulse`} />
+            <span className="font-medium">
+              {isConnected ? 'System Online • Real-time Monitoring Active' : 'Waiting for IoT data...'}
+            </span>
           </div>
           <div className="text-sm text-muted-foreground">
-            Last updated: {new Date().toLocaleTimeString()}
+            Device: {deviceId} • Last updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
 

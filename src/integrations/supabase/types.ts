@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      sensor_readings: {
+        Row: {
+          created_at: string
+          device_id: string
+          filter_life: number | null
+          flow_rate: number | null
+          id: string
+          ph: number | null
+          tank_level: number | null
+          tds: number | null
+          temperature: number | null
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          filter_life?: number | null
+          flow_rate?: number | null
+          id?: string
+          ph?: number | null
+          tank_level?: number | null
+          tds?: number | null
+          temperature?: number | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          filter_life?: number | null
+          flow_rate?: number | null
+          id?: string
+          ph?: number | null
+          tank_level?: number | null
+          tds?: number | null
+          temperature?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
