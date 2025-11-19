@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Droplets, Thermometer, Activity, Gauge, Filter, Waves } from "lucide-react";
 import MetricCard from "@/components/MetricCard";
 import StatusIndicator from "@/components/StatusIndicator";
-import WaterQualityChart from "@/components/WaterQualityChart";
+import ParameterChart from "@/components/ParameterChart";
+import DeviceLocation from "@/components/DeviceLocation";
+import DeviceControl from "@/components/DeviceControl";
 import AlertsPanel from "@/components/AlertsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -21,15 +23,15 @@ const Index = () => {
     filterLife: 0,
   });
 
-  const [chartData, setChartData] = useState([
-    { time: "00:00", tds: 0, ph: 0 },
-    { time: "04:00", tds: 0, ph: 0 },
-    { time: "08:00", tds: 0, ph: 0 },
-    { time: "12:00", tds: 0, ph: 0 },
-    { time: "16:00", tds: 0, ph: 0 },
-    { time: "20:00", tds: 0, ph: 0 },
-    { time: "Now", tds: 0, ph: 0 },
-  ]);
+  const [timeRange, setTimeRange] = useState('24h');
+  const [chartData, setChartData] = useState({
+    tds: [{ time: "Now", value: 0 }],
+    ph: [{ time: "Now", value: 0 }],
+    temperature: [{ time: "Now", value: 0 }],
+    turbidity: [{ time: "Now", value: 0 }],
+    flowRate: [{ time: "Now", value: 0 }],
+    tankLevel: [{ time: "Now", value: 0 }],
+  });
 
   const alerts = [
     {
@@ -84,15 +86,33 @@ const Index = () => {
     }
   };
 
-  // Fetch chart data (last 7 readings)
-  const fetchChartData = async () => {
+  // Fetch chart data based on time range
+  const fetchChartData = async (range: string) => {
     try {
+      let hoursBack = 24;
+      let limit = 24;
+      
+      switch(range) {
+        case 'live': hoursBack = 1; limit = 12; break;
+        case '1h': hoursBack = 1; limit = 12; break;
+        case '6h': hoursBack = 6; limit = 24; break;
+        case '1d': hoursBack = 24; limit = 48; break;
+        case '1w': hoursBack = 168; limit = 84; break;
+        case '1m': hoursBack = 720; limit = 90; break;
+        case '3m': hoursBack = 2160; limit = 90; break;
+        default: hoursBack = 24; limit = 48;
+      }
+
+      const timeAgo = new Date();
+      timeAgo.setHours(timeAgo.getHours() - hoursBack);
+
       const { data, error } = await supabase
         .from('sensor_readings')
-        .select('tds, ph, created_at')
+        .select('*')
         .eq('device_id', deviceId)
-        .order('created_at', { ascending: false })
-        .limit(7);
+        .gte('created_at', timeAgo.toISOString())
+        .order('created_at', { ascending: true })
+        .limit(limit);
 
       if (error) {
         console.error('Error fetching chart data:', error);
@@ -100,12 +120,26 @@ const Index = () => {
       }
 
       if (data && data.length > 0) {
-        const formattedData = data.reverse().map((reading, index) => ({
-          time: index === data.length - 1 ? 'Now' : new Date(reading.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          tds: reading.tds || 0,
-          ph: reading.ph || 0,
-        }));
-        setChartData(formattedData);
+        const formatTime = (timestamp: string, index: number) => {
+          if (index === data.length - 1) return 'Now';
+          const date = new Date(timestamp);
+          if (range === 'live' || range === '1h' || range === '6h' || range === '1d') {
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          } else if (range === '1w') {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          } else {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          }
+        };
+
+        setChartData({
+          tds: data.map((d, i) => ({ time: formatTime(d.created_at, i), value: d.tds || 0 })),
+          ph: data.map((d, i) => ({ time: formatTime(d.created_at, i), value: d.ph || 0 })),
+          temperature: data.map((d, i) => ({ time: formatTime(d.created_at, i), value: d.temperature || 0 })),
+          turbidity: data.map((d, i) => ({ time: formatTime(d.created_at, i), value: (d.tds || 0) / 10 })),
+          flowRate: data.map((d, i) => ({ time: formatTime(d.created_at, i), value: d.flow_rate || 0 })),
+          tankLevel: data.map((d, i) => ({ time: formatTime(d.created_at, i), value: d.tank_level || 0 })),
+        });
       }
     } catch (error) {
       console.error('Error:', error);
@@ -115,7 +149,7 @@ const Index = () => {
   // Set up realtime subscription
   useEffect(() => {
     fetchLatestReading();
-    fetchChartData();
+    fetchChartData(timeRange);
 
     const channel = supabase
       .channel('sensor-readings')
@@ -141,7 +175,7 @@ const Index = () => {
           setIsConnected(true);
           
           // Update chart data
-          fetchChartData();
+          fetchChartData(timeRange);
           
           toast({
             title: "New Data Received",
@@ -154,7 +188,12 @@ const Index = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [deviceId, toast]);
+  }, [deviceId, toast, timeRange]);
+
+  // Refetch chart data when time range changes
+  useEffect(() => {
+    fetchChartData(timeRange);
+  }, [timeRange]);
 
   const getStatus = (value: number, min: number, max: number) => {
     if (value >= min && value <= max) return "good";
@@ -256,14 +295,71 @@ const Index = () => {
           />
         </div>
 
-        {/* Chart and Alerts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <WaterQualityChart data={chartData} />
-          </div>
-          <div className="lg:col-span-1">
-            <AlertsPanel alerts={alerts} />
-          </div>
+        {/* Device Location and Control */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <DeviceLocation 
+            deviceId={deviceId} 
+            location="Smart Water Purifier - Main Tank"
+            coordinates={{ lat: 17.385, lng: 78.4867 }}
+          />
+          <DeviceControl deviceId={deviceId} />
+        </div>
+
+        {/* Charts Section - Multiple Parameters */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ParameterChart
+            title="TDS (Total Dissolved Solids)"
+            data={chartData.tds}
+            unit="ppm"
+            color="hsl(var(--primary))"
+            selectedRange={timeRange}
+            onRangeChange={setTimeRange}
+          />
+          <ParameterChart
+            title="pH Level"
+            data={chartData.ph}
+            unit="pH"
+            color="hsl(var(--secondary))"
+            selectedRange={timeRange}
+            onRangeChange={setTimeRange}
+          />
+          <ParameterChart
+            title="Temperature"
+            data={chartData.temperature}
+            unit="°C"
+            color="hsl(var(--warning))"
+            selectedRange={timeRange}
+            onRangeChange={setTimeRange}
+          />
+          <ParameterChart
+            title="Turbidity"
+            data={chartData.turbidity}
+            unit="NTU"
+            color="hsl(var(--accent))"
+            selectedRange={timeRange}
+            onRangeChange={setTimeRange}
+          />
+          <ParameterChart
+            title="Water Flow"
+            data={chartData.flowRate}
+            unit="L/min"
+            color="hsl(var(--success))"
+            selectedRange={timeRange}
+            onRangeChange={setTimeRange}
+          />
+          <ParameterChart
+            title="Tank Level"
+            data={chartData.tankLevel}
+            unit="%"
+            color="hsl(195 85% 55%)"
+            selectedRange={timeRange}
+            onRangeChange={setTimeRange}
+          />
+        </div>
+
+        {/* Alerts Panel */}
+        <div className="grid grid-cols-1 gap-6">
+          <AlertsPanel alerts={alerts} />
         </div>
 
         {/* Footer Stats */}
