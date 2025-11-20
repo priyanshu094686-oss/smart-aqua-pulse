@@ -3,6 +3,7 @@ import { Droplets, Thermometer, Activity, Gauge, Filter, Waves } from "lucide-re
 import MetricCard from "@/components/MetricCard";
 import StatusIndicator from "@/components/StatusIndicator";
 import ParameterChart from "@/components/ParameterChart";
+import AllParametersChart from "@/components/AllParametersChart";
 import DeviceLocation from "@/components/DeviceLocation";
 import DeviceControl from "@/components/DeviceControl";
 import AlertsPanel from "@/components/AlertsPanel";
@@ -24,6 +25,7 @@ const Index = () => {
   });
 
   const [timeRange, setTimeRange] = useState('24h');
+  const [allParamsRange, setAllParamsRange] = useState('24h');
   const [chartData, setChartData] = useState({
     tds: [{ time: "Now", value: 0 }],
     ph: [{ time: "Now", value: 0 }],
@@ -32,6 +34,9 @@ const Index = () => {
     flowRate: [{ time: "Now", value: 0 }],
     tankLevel: [{ time: "Now", value: 0 }],
   });
+  const [allParamsData, setAllParamsData] = useState([
+    { time: "Now", tds: 0, ph: 0, temperature: 0, flow_rate: 0, tank_level: 0, filter_life: 0 }
+  ]);
 
   const alerts = [
     {
@@ -140,6 +145,19 @@ const Index = () => {
           flowRate: data.map((d, i) => ({ time: formatTime(d.created_at, i), value: d.flow_rate || 0 })),
           tankLevel: data.map((d, i) => ({ time: formatTime(d.created_at, i), value: d.tank_level || 0 })),
         });
+        
+        // Also update all params data if it's the same range
+        if (range === allParamsRange) {
+          setAllParamsData(data.map((d, i) => ({
+            time: formatTime(d.created_at, i),
+            tds: d.tds || 0,
+            ph: d.ph || 0,
+            temperature: d.temperature || 0,
+            flow_rate: d.flow_rate || 0,
+            tank_level: d.tank_level || 0,
+            filter_life: d.filter_life || 0,
+          })));
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -150,6 +168,7 @@ const Index = () => {
   useEffect(() => {
     fetchLatestReading();
     fetchChartData(timeRange);
+    fetchChartData(allParamsRange);
 
     const channel = supabase
       .channel('sensor-readings')
@@ -354,6 +373,15 @@ const Index = () => {
             color="hsl(195 85% 55%)"
             selectedRange={timeRange}
             onRangeChange={setTimeRange}
+          />
+        </div>
+
+        {/* All Parameters Combined Chart */}
+        <div className="grid grid-cols-1 gap-6">
+          <AllParametersChart 
+            data={allParamsData}
+            selectedRange={allParamsRange}
+            onRangeChange={setAllParamsRange}
           />
         </div>
 
