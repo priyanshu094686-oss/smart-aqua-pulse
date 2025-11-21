@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_subscriptions: {
+        Row: {
+          created_at: string | null
+          device_id: string
+          email: string
+          id: string
+          is_active: boolean | null
+          last_sent_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_id: string
+          email: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_id?: string
+          email?: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+        }
+        Relationships: []
+      }
       sensor_readings: {
         Row: {
           created_at: string

@@ -8,6 +8,7 @@ import DeviceLocation from "@/components/DeviceLocation";
 import DeviceControl from "@/components/DeviceControl";
 import AlertsPanel from "@/components/AlertsPanel";
 import AIChatButton from "@/components/AIChatButton";
+import EmailSubscription from "@/components/EmailSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -389,6 +390,7 @@ const Index = () => {
         {/* Alerts Panel */}
         <div className="grid grid-cols-1 gap-6">
           <AlertsPanel alerts={alerts} />
+          <EmailSubscription deviceId={deviceId} />
         </div>
 
         {/* Footer Stats */}
