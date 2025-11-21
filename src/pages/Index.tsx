@@ -7,6 +7,7 @@ import AllParametersChart from "@/components/AllParametersChart";
 import DeviceLocation from "@/components/DeviceLocation";
 import DeviceControl from "@/components/DeviceControl";
 import AlertsPanel from "@/components/AlertsPanel";
+import AIChatButton from "@/components/AIChatButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -412,6 +413,18 @@ const Index = () => {
           </div>
         </div>
       </div>
+
+      {/* AI Chat Assistant */}
+      <AIChatButton
+        sensorData={{
+          tds: metrics.tds,
+          ph: metrics.ph,
+          temperature: metrics.temperature,
+          flowRate: metrics.flowRate,
+          tankLevel: metrics.tankLevel,
+          filterLife: metrics.filterLife,
+        }}
+      />
     </div>
   );
 };
