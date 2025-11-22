@@ -9,6 +9,7 @@ import DeviceControl from "@/components/DeviceControl";
 import AlertsPanel from "@/components/AlertsPanel";
 import AIChatButton from "@/components/AIChatButton";
 import EmailSubscription from "@/components/EmailSubscription";
+import Navigation from "@/components/Navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -224,6 +225,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen p-4 md:p-8">
+      <Navigation />
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
