@@ -195,6 +195,29 @@ Data Points: ${analyticsData.dataPoints} readings over ${analyticsData.timeRange
 
         console.log(`Email sent to ${subscription.email}:`, emailResult);
 
+        // Save report to history
+        const { error: historyError } = await supabase
+          .from('report_history')
+          .insert({
+            device_id: subscription.device_id,
+            recipient_email: subscription.email,
+            report_period_start: sevenDaysAgo.toISOString(),
+            report_period_end: new Date().toISOString(),
+            avg_tds: avgTds,
+            avg_ph: avgPh,
+            avg_temperature: avgTemp,
+            avg_flow_rate: avgFlow,
+            avg_tank_level: avgTank,
+            avg_filter_life: avgFilter,
+            data_points: readings.length,
+            ai_summary: reportContent.substring(0, 500), // First 500 chars as summary
+            ai_recommendations: reportContent
+          });
+
+        if (historyError) {
+          console.error('Error saving report history:', historyError);
+        }
+
         // Update last_sent_at
         await supabase
           .from('email_subscriptions')

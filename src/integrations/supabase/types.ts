@@ -41,6 +41,60 @@ export type Database = {
         }
         Relationships: []
       }
+      report_history: {
+        Row: {
+          ai_recommendations: string | null
+          ai_summary: string | null
+          avg_filter_life: number | null
+          avg_flow_rate: number | null
+          avg_ph: number | null
+          avg_tank_level: number | null
+          avg_tds: number | null
+          avg_temperature: number | null
+          data_points: number | null
+          device_id: string
+          id: string
+          recipient_email: string
+          report_period_end: string
+          report_period_start: string
+          sent_at: string | null
+        }
+        Insert: {
+          ai_recommendations?: string | null
+          ai_summary?: string | null
+          avg_filter_life?: number | null
+          avg_flow_rate?: number | null
+          avg_ph?: number | null
+          avg_tank_level?: number | null
+          avg_tds?: number | null
+          avg_temperature?: number | null
+          data_points?: number | null
+          device_id: string
+          id?: string
+          recipient_email: string
+          report_period_end: string
+          report_period_start: string
+          sent_at?: string | null
+        }
+        Update: {
+          ai_recommendations?: string | null
+          ai_summary?: string | null
+          avg_filter_life?: number | null
+          avg_flow_rate?: number | null
+          avg_ph?: number | null
+          avg_tank_level?: number | null
+          avg_tds?: number | null
+          avg_temperature?: number | null
+          data_points?: number | null
+          device_id?: string
+          id?: string
+          recipient_email?: string
+          report_period_end?: string
+          report_period_start?: string
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
       sensor_readings: {
         Row: {
           created_at: string
