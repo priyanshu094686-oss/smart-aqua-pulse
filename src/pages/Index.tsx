@@ -9,6 +9,7 @@ import DeviceControl from "@/components/DeviceControl";
 import AlertsPanel from "@/components/AlertsPanel";
 import AIChatButton from "@/components/AIChatButton";
 import EmailSubscription from "@/components/EmailSubscription";
+import WaterQualityScore from "@/components/WaterQualityScore";
 import Navigation from "@/components/Navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -317,6 +318,9 @@ const Index = () => {
             description="~45 days remaining"
           />
         </div>
+
+        {/* Water Quality Score Card */}
+        <WaterQualityScore metrics={metrics} />
 
         {/* Device Location and Control */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
