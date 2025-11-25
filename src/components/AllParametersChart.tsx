@@ -40,6 +40,7 @@ const AllParametersChart = ({
           <YAxis 
             stroke="hsl(var(--muted-foreground))"
             style={{ fontSize: '12px' }}
+            domain={[0, 1000]}
           />
           <Tooltip 
             contentStyle={{
