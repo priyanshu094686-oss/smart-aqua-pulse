@@ -14,6 +14,7 @@ interface ParameterChartProps {
   color?: string;
   selectedRange: string;
   onRangeChange: (range: string) => void;
+  domain?: [number, number | string];
 }
 
 const ParameterChart = ({ 
@@ -22,8 +23,21 @@ const ParameterChart = ({
   unit, 
   color = "hsl(var(--primary))",
   selectedRange,
-  onRangeChange
+  onRangeChange,
+  domain = [0, 'auto']
 }: ParameterChartProps) => {
+  // Auto-detect domain based on unit if not provided
+  const getDomain = (): [number, number | string] => {
+    if (domain[0] !== 0 || domain[1] !== 'auto') return domain;
+    
+    if (unit === 'ppm') return [0, 1000]; // TDS
+    if (unit === 'pH' || unit === '') return [0, 14]; // pH
+    if (unit === '°C') return [0, 50]; // Temperature
+    if (unit === 'NTU') return [0, 10]; // Turbidity
+    if (unit === 'L/min') return [0, 100]; // Flow rate
+    if (unit === '%') return [0, 100]; // Percentage
+    return [0, 'auto'];
+  };
   return (
     <Card className="glass-card p-6">
       <div className="flex items-center justify-between mb-4">
@@ -41,6 +55,7 @@ const ParameterChart = ({
           <YAxis 
             stroke="hsl(var(--muted-foreground))"
             style={{ fontSize: '12px' }}
+            domain={getDomain()}
           />
           <Tooltip 
             contentStyle={{

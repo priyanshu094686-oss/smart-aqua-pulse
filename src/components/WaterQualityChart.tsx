@@ -24,8 +24,19 @@ const WaterQualityChart = ({ data }: WaterQualityChartProps) => {
             style={{ fontSize: '12px' }}
           />
           <YAxis 
+            yAxisId="tds"
             stroke="hsl(var(--muted-foreground))"
             style={{ fontSize: '12px' }}
+            domain={[0, 1000]}
+            label={{ value: 'TDS (ppm)', angle: -90, position: 'insideLeft' }}
+          />
+          <YAxis 
+            yAxisId="ph"
+            orientation="right"
+            stroke="hsl(var(--muted-foreground))"
+            style={{ fontSize: '12px' }}
+            domain={[0, 14]}
+            label={{ value: 'pH', angle: 90, position: 'insideRight' }}
           />
           <Tooltip 
             contentStyle={{
@@ -37,6 +48,7 @@ const WaterQualityChart = ({ data }: WaterQualityChartProps) => {
           <Line 
             type="monotone" 
             dataKey="tds" 
+            yAxisId="tds"
             stroke="hsl(var(--primary))" 
             strokeWidth={2}
             dot={{ fill: 'hsl(var(--primary))', r: 4 }}
@@ -45,6 +57,7 @@ const WaterQualityChart = ({ data }: WaterQualityChartProps) => {
           <Line 
             type="monotone" 
             dataKey="ph" 
+            yAxisId="ph"
             stroke="hsl(var(--secondary))" 
             strokeWidth={2}
             dot={{ fill: 'hsl(var(--secondary))', r: 4 }}
