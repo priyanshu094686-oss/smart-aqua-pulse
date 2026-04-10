@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Mail, CheckCircle, AlertCircle } from "lucide-react";
+import { Mail, CheckCircle, AlertCircle, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -14,8 +14,34 @@ interface EmailSubscriptionProps {
 
 const EmailSubscription = ({ deviceId }: EmailSubscriptionProps) => {
   const [email, setEmail] = useState("");
+  const [sendEmail, setSendEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSendNow = async () => {
+    if (!sendEmail || !sendEmail.includes('@')) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('weekly-report', {
+        body: { targetEmail: sendEmail, deviceId },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Report sent to ${sendEmail}!`);
+      setSendEmail("");
+    } catch (error) {
+      console.error('Send report error:', error);
+      toast.error("Failed to send report. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const handleSubscribe = async () => {
     if (!email || !email.includes('@')) {
@@ -27,11 +53,7 @@ const EmailSubscription = ({ deviceId }: EmailSubscriptionProps) => {
     try {
       const { error } = await supabase
         .from('email_subscriptions')
-        .insert({
-          email,
-          device_id: deviceId,
-          is_active: true
-        });
+        .insert({ email, device_id: deviceId, is_active: true });
 
       if (error) {
         if (error.code === '23505') {
@@ -61,7 +83,6 @@ const EmailSubscription = ({ deviceId }: EmailSubscriptionProps) => {
         .eq('device_id', deviceId);
 
       if (error) throw error;
-
       setIsSubscribed(false);
       setEmail("");
       toast.success("Successfully unsubscribed from weekly reports");
@@ -83,7 +104,6 @@ const EmailSubscription = ({ deviceId }: EmailSubscriptionProps) => {
         .eq('device_id', deviceId);
 
       if (error) throw error;
-
       toast.success(checked ? "Reports enabled" : "Reports paused");
     } catch (error) {
       console.error('Toggle error:', error);
@@ -94,79 +114,107 @@ const EmailSubscription = ({ deviceId }: EmailSubscriptionProps) => {
   };
 
   return (
-    <Card className="glass-card p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <Mail className="w-6 h-6 text-primary" />
-        <div>
-          <h3 className="font-semibold text-lg">Weekly Email Reports</h3>
-          <p className="text-sm text-muted-foreground">
-            Receive AI-powered water quality summaries and recommendations
-          </p>
+    <Card className="glass-card p-6 space-y-6">
+      {/* Send Report Now Section */}
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <Send className="w-6 h-6 text-primary" />
+          <div>
+            <h3 className="font-semibold text-lg">Send Report Now</h3>
+            <p className="text-sm text-muted-foreground">
+              Enter any email to instantly send an AI-powered water quality report
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder="recipient@email.com"
+            value={sendEmail}
+            onChange={(e) => setSendEmail(e.target.value)}
+            disabled={isSending}
+            className="flex-1"
+          />
+          <Button onClick={handleSendNow} disabled={isSending}>
+            {isSending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Send
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
-      {!isSubscribed ? (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button 
-              onClick={handleSubscribe}
-              disabled={isLoading}
-            >
-              Subscribe
-            </Button>
-          </div>
-          <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <CheckCircle className="w-4 h-4 mt-0.5 text-success" />
-            <p>Get weekly insights on water quality trends, maintenance alerts, and optimization tips</p>
+      <div className="border-t border-border" />
+
+      {/* Weekly Subscription Section */}
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <Mail className="w-6 h-6 text-primary" />
+          <div>
+            <h3 className="font-semibold text-lg">Weekly Email Reports</h3>
+            <p className="text-sm text-muted-foreground">
+              Subscribe to receive automatic weekly summaries
+            </p>
           </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-success/10 rounded-lg border border-success/20">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-success" />
-              <div>
-                <p className="font-medium">{email}</p>
-                <p className="text-sm text-muted-foreground">Subscribed to weekly reports</p>
-              </div>
+
+        {!isSubscribed ? (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button onClick={handleSubscribe} disabled={isLoading}>
+                Subscribe
+              </Button>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleUnsubscribe}
-              disabled={isLoading}
-            >
-              Unsubscribe
-            </Button>
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="w-4 h-4 mt-0.5 text-success" />
+              <p>Get weekly insights on water quality trends, maintenance alerts, and optimization tips</p>
+            </div>
           </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-success/10 rounded-lg border border-success/20">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-success" />
+                <div>
+                  <p className="font-medium">{email}</p>
+                  <p className="text-sm text-muted-foreground">Subscribed to weekly reports</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleUnsubscribe} disabled={isLoading}>
+                Unsubscribe
+              </Button>
+            </div>
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="report-toggle" className="cursor-pointer">
-              <span className="font-medium">Active</span>
-              <p className="text-sm text-muted-foreground">Receive weekly reports</p>
-            </Label>
-            <Switch 
-              id="report-toggle"
-              defaultChecked
-              onCheckedChange={handleToggle}
-              disabled={isLoading}
-            />
-          </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="report-toggle" className="cursor-pointer">
+                <span className="font-medium">Active</span>
+                <p className="text-sm text-muted-foreground">Receive weekly reports</p>
+              </Label>
+              <Switch id="report-toggle" defaultChecked onCheckedChange={handleToggle} disabled={isLoading} />
+            </div>
 
-          <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <AlertCircle className="w-4 h-4 mt-0.5 text-primary" />
-            <p>Reports are sent every Monday at 9 AM with the previous week's data analysis</p>
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <AlertCircle className="w-4 h-4 mt-0.5 text-primary" />
+              <p>Reports are sent every Monday at 9 AM with the previous week's data analysis</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   );
 };
